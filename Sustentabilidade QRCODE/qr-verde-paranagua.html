@@ -1241,7 +1241,8 @@
   <div class="section-sub">Atualizações rápidas sobre o projeto e temas de sustentabilidade em Paranaguá.</div>
 
   <div class="notice">
-    Esta seção puxa notícias automaticamente de um Google Sheet publicado como CSV. Se o Sheet não estiver disponível, ela usa o arquivo <strong>news.json</strong> como fallback e, se necessário, mostra um conteúdo de reserva.</div>
+    Esta seção tenta puxar notícias do RSS ambiental da Agência Brasil via um conversor RSS → JSON. Se a fonte externa falhar, ela usa fallback para GDELT, Google Sheets ou <strong>news.json</strong>.</div>
+  <div id="news-source-notice" class="notice" style="margin-top:1rem">Carregando notícias...</div>
 
   <div class="grid-2 news-grid" id="news-list">
     <!-- notícias carregadas por JavaScript -->
@@ -1410,11 +1411,50 @@
     }
   ];
 
+  const NEWS_SOURCE_URL = 'https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fagenciabrasil.ebc.com.br%2Fmeio-ambiente%2Ffeed';
   const GDELT_API_URL = 'https://api.gdeltproject.org/api/v2/doc/doc?query=sustentabilidade%20Paranagu%C3%A1%20OR%20meio%20ambiente%20Paranagu%C3%A1&mode=artlist&format=json&maxrecords=10&sort=datedesc';
 
   // Se quiser usar o Google Sheets como fonte de notícias, publique a planilha (File → Publish to web)
   // e cole aqui o link CSV gerado.
   const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQlReO52wzeLGY2uR2s_WLlpEhr0xPWSenBCfgeSIESNgCq2GKI1foRy9DqR7uw1mv5U6V4WSNQ25bR/pub?gid=0&single=true&output=csv';
+
+  function parseFeed(text) {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'application/xml');
+    const items = [];
+    xml.querySelectorAll('item').forEach(item => {
+      items.push({
+        date: item.querySelector('pubDate')?.textContent || item.querySelector('dc\:date')?.textContent || '',
+        title: item.querySelector('title')?.textContent || '',
+        summary: item.querySelector('description')?.textContent || item.querySelector('summary')?.textContent || '',
+        url: item.querySelector('link')?.textContent || item.querySelector('guid')?.textContent || ''
+      });
+    });
+    xml.querySelectorAll('entry').forEach(entry => {
+      items.push({
+        date: entry.querySelector('updated')?.textContent || entry.querySelector('published')?.textContent || '',
+        title: entry.querySelector('title')?.textContent || '',
+        summary: entry.querySelector('summary')?.textContent || entry.querySelector('content')?.textContent || '',
+        url: entry.querySelector('link')?.getAttribute('href') || ''
+      });
+    });
+    return items;
+  }
+
+  function fetchExternalNews() {
+    if (!NEWS_SOURCE_URL) return Promise.reject(new Error('Nenhuma fonte externa configurada'));
+    return fetch(NEWS_SOURCE_URL)
+      .then(response => { if (!response.ok) throw new Error('Falha ao carregar fonte externa'); return response.text(); })
+      .then(text => {
+        const normalized = [];
+        if (/^\s*[\[{]/.test(text)) {
+          const json = JSON.parse(text);
+          const list = json.articles || json.items || json.posts || json || [];
+          return normalizeNewsItems(list);
+        }
+        return parseFeed(text);
+      });
+  }
 
   function getNormalizedNews(item) {
     return {
@@ -1427,6 +1467,12 @@
 
   function normalizeNewsItems(items) {
     return (items || []).map(getNormalizedNews);
+  }
+
+  function setNewsBanner(message) {
+    const banner = document.getElementById('news-source-notice');
+    if (!banner) return;
+    banner.innerHTML = message;
   }
 
   function parseGdelt(data) {
@@ -1522,15 +1568,42 @@
   }
 
   function loadNews() {
-    if (GDELT_API_URL) {
+    if (NEWS_SOURCE_URL) {
+      fetchExternalNews()
+        .then(parsed => {
+          setNewsBanner('Exibindo notícias da fonte externa configurada.');
+          renderNews(parsed);
+        })
+        .catch(() => {
+          setNewsBanner('Não foi possível carregar a fonte externa. Tentando fallback...');
+          if (GDELT_API_URL) {
+            fetch(GDELT_API_URL)
+              .then(response => { if (!response.ok) throw new Error('Falha ao carregar GDELT'); return response.json(); })
+              .then(data => {
+                const parsed = parseGdelt(data);
+                if (!parsed.length) throw new Error('Nenhum resultado de notícias');
+                setNewsBanner('Exibindo notícias ao vivo da API GDELT.');
+                renderNews(parsed);
+              })
+              .catch(() => {
+                setNewsBanner('Não foi possível carregar notícias ao vivo da API GDELT. Usando fallback local para exibir notícias.');
+                loadNewsFromSheet();
+              });
+          } else {
+            loadNewsFromSheet();
+          }
+        });
+    } else if (GDELT_API_URL) {
       fetch(GDELT_API_URL)
         .then(response => { if (!response.ok) throw new Error('Falha ao carregar GDELT'); return response.json(); })
         .then(data => {
           const parsed = parseGdelt(data);
           if (!parsed.length) throw new Error('Nenhum resultado de notícias');
+          setNewsBanner('Exibindo notícias ao vivo da API GDELT.');
           renderNews(parsed);
         })
         .catch(() => {
+          setNewsBanner('Não foi possível carregar notícias ao vivo da API GDELT. Usando fallback local para exibir notícias.');
           loadNewsFromSheet();
         });
     } else {

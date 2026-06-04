@@ -1241,7 +1241,7 @@
   <div class="section-sub">Atualizações rápidas sobre o projeto e temas de sustentabilidade em Paranaguá.</div>
 
   <div class="notice">
-    Esta seção puxa notícias automaticamente de um Google Sheet publicado como CSV. Se o Sheet não estiver disponível, ela usa o arquivo <strong>news.json</strong> como fallback e, se necessário, mostra um conteúdo de reserva.</div>
+    Esta seção puxa notícias automaticamente da API GDELT usando a busca por "sustentabilidade Paranaguá". Se a API não responder, ela tenta um Google Sheet em CSV; se também não estiver disponível, usa o arquivo <strong>news.json</strong> como fallback.</div>
 
   <div class="grid-2 news-grid" id="news-list">
     <!-- notícias carregadas por JavaScript -->
@@ -1429,6 +1429,12 @@
     return (items || []).map(getNormalizedNews);
   }
 
+  function setNewsBanner(message) {
+    const banner = document.getElementById('news-source-notice');
+    if (!banner) return;
+    banner.innerHTML = message;
+  }
+
   function parseGdelt(data) {
     const items = data?.articles || data?.docs || data?.items || [];
     return normalizeNewsItems(items);
@@ -1528,9 +1534,11 @@
         .then(data => {
           const parsed = parseGdelt(data);
           if (!parsed.length) throw new Error('Nenhum resultado de notícias');
+          setNewsBanner('Exibindo notícias ao vivo da API GDELT.');
           renderNews(parsed);
         })
         .catch(() => {
+          setNewsBanner('Não foi possível carregar notícias ao vivo da API GDELT. Usando fallback local para exibir notícias.');
           loadNewsFromSheet();
         });
     } else {
