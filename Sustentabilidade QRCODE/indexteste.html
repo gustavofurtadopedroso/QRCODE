@@ -205,41 +205,35 @@
   }
 
   .news-grid {
-    display: block;
-    column-count: 2;
-    column-gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
     margin-bottom: 1.5rem;
   }
   .news-card {
-    display: inline-block;
-    width: 100%;
-    break-inside: avoid;
-    margin-bottom: 1rem;
     background: var(--white);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 1rem;
-    height: auto;
-    min-height: 0;
-    vertical-align: top;
-  }
-  .news-card .news-date {
-    color: var(--text-muted);
-    font-size: 0.78rem;
-    margin-bottom: 0.2rem;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
   }
   .news-card h3 {
     font-family: 'Syne', sans-serif;
     font-size: 1rem;
     font-weight: 700;
     color: var(--green-deep);
-    margin: 0 0 0.3rem 0;
-    line-height: 1.2;
+    margin: 0;
+  }
+  .news-card .news-date {
+    color: var(--text-muted);
+    font-size: 0.78rem;
   }
   .news-card p {
     font-size: 0.88rem;
     color: var(--text-mid);
-    line-height: 1.5;
+    line-height: 1.6;
     margin: 0;
   }
   .news-card a {
@@ -249,12 +243,7 @@
     font-size: 0.88rem;
   }
   .news-warning {
-    column-span: all;
-  }
-  @media (max-width: 768px) {
-    .news-grid {
-      column-count: 1;
-    }
+    grid-column: 1 / -1;
   }
 
   /* ── HOME SECTION ────────────────────────────── */
@@ -1251,6 +1240,9 @@
   <div class="section-title">Notícias do QR Verde</div>
   <div class="section-sub">Atualizações rápidas sobre o projeto e temas de sustentabilidade em Paranaguá.</div>
 
+  <div class="notice">
+    Esta seção puxa notícias automaticamente da API GDELT usando a busca por "sustentabilidade Paranaguá". Se a API não responder, ela tenta um Google Sheet em CSV; se também não estiver disponível, usa o arquivo <strong>news.json</strong> como fallback.</div>
+
   <div class="grid-2 news-grid" id="news-list">
     <!-- notícias carregadas por JavaScript -->
   </div>
@@ -1404,99 +1396,32 @@
     {
       date: '28/05/2026',
       title: 'Lançamento do QR Verde Paranaguá',
-      summary: 'O site agora conta com seção de notícias para divulgar novidades do projeto e temas ambientais locais.',
-      url: window.location.href,
-      sourceName: 'QR Verde Paranaguá',
-      sourceUrl: window.location.href
+      summary: 'O site agora conta com seção de notícias para divulgar novidades do projeto e temas ambientais locais.'
     },
     {
       date: '27/05/2026',
       title: 'Importância do descarte correto de óleo',
-      summary: 'Entregar óleo de cozinha usado em postos de coleta evita que ele polua a água e entupa a rede de esgoto.',
-      url: window.location.href,
-      sourceName: 'QR Verde Paranaguá',
-      sourceUrl: window.location.href
+      summary: 'Entregar óleo de cozinha usado em postos de coleta evita que ele polua a água e entupa a rede de esgoto.'
     },
     {
       date: '26/05/2026',
       title: 'Dica rápida: reciclagem no bairro',
-      summary: 'Separe papel, plástico, vidro e metal corretamente e ajude a reduzir o volume de resíduos enviados ao aterro.',
-      url: window.location.href,
-      sourceName: 'QR Verde Paranaguá',
-      sourceUrl: window.location.href
+      summary: 'Separe papel, plástico, vidro e metal corretamente e ajude a reduzir o volume de resíduos enviados ao aterro.'
     }
   ];
 
-  const API_NEWS_URL = '/api/news';
-
-  let currentNewsPage = 0;
-  let allNewsItems = [];
-  const NEWS_PER_PAGE = 6;
-
-  function getArticleDate(item) {
-    const rawDate = item.date || item.publishedAt || item.pubDate || item.createdAt || item.isoDate || '';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return null;
-    return date;
-  }
-
-  function isRecentArticle(item) {
-    const articleDate = getArticleDate(item);
-    if (!articleDate) return true;
-    const now = new Date();
-    const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setFullYear(now.getFullYear() - 1);
-    return articleDate >= twelveMonthsAgo;
-  }
-
-  function formatDate(dateString) {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      if (Number.isNaN(date.getTime())) return '';
-      return date.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      });
-    } catch (e) {
-      return '';
-    }
-  }
+  const GDELT_API_URL = 'https://api.gdeltproject.org/api/v2/doc/doc?query=sustentabilidade%20Paranagu%C3%A1%20OR%20meio%20ambiente%20Paranagu%C3%A1&mode=artlist&format=json&maxrecords=10&sort=datedesc';
 
   // Se quiser usar o Google Sheets como fonte de notícias, publique a planilha (File → Publish to web)
   // e cole aqui o link CSV gerado.
   const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQlReO52wzeLGY2uR2s_WLlpEhr0xPWSenBCfgeSIESNgCq2GKI1foRy9DqR7uw1mv5U6V4WSNQ25bR/pub?gid=0&single=true&output=csv';
 
-  // Parsing feito no backend - removido do frontend
-
-  // Extraction feito no backend
-
-  // Scoring feito no backend
-
-  function fetchExternalNews() {
-    return fetch(API_NEWS_URL)
-      .then(response => { if (!response.ok) throw new Error('Falha ao buscar notícias'); return response.json(); })
-      .then(data => {
-        if (!data.success || !data.news || data.news.length === 0) {
-          throw new Error('Nenhuma notícia retornada');
-        }
-        return data.news;
-      });
-  }
-
   function getNormalizedNews(item) {
-    // Backend já normaliza, apenas garantir campos
     return {
-      date: item.date || '',
-      formattedDate: item.formattedDate || '',
-      title: item.title || '',
-      description: item.description || '',
-      link: item.link || '',
-      author: item.author || '',
-      sourceName: item.sourceName || 'Fonte',
-      sourceUrl: item.sourceUrl || item.link || '',
-      image: item.image || null
+      date: item.date || item.Date || item.data || item.Data || item.publishdate || item.seendate || '',
+      title: item.title || item.Title || item.titulo || item.Título || item.url || item.URL || '',
+      summary: item.summary || item.Summary || item.resumo || item.Resumo || item.excerpt || item.description || item.Description || '',
+      url: item.url || item.URL || item.link || item.Link || ''
     };
   }
 
@@ -1505,10 +1430,15 @@
   }
 
   function setNewsBanner(message) {
-    // Banners de carregamento desabilitados
+    const banner = document.getElementById('news-source-notice');
+    if (!banner) return;
+    banner.innerHTML = message;
   }
 
-  // GDELT removido - usando backend
+  function parseGdelt(data) {
+    const items = data?.articles || data?.docs || data?.items || [];
+    return normalizeNewsItems(items);
+  }
 
   function parseCSV(text) {
     const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
@@ -1531,109 +1461,25 @@
     });
   }
 
-  function renderCurrentPage() {
+  function renderNews(newsItems) {
     const container = document.getElementById('news-list');
     container.innerHTML = '';
-    
-    if (!allNewsItems || allNewsItems.length === 0) {
-      const msg = document.createElement('div');
-      msg.style.cssText = 'text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.9rem;';
-      msg.textContent = 'Nenhuma notícia encontrada no momento.';
-      container.appendChild(msg);
+    if (!newsItems || newsItems.length === 0) {
+      container.innerHTML = '<div class="notice">Nenhuma notícia disponível no momento. Atualize o arquivo <strong>news.json</strong> ou o Google Sheet para adicionar novidades.</div>';
       return;
     }
-    
-    const totalPages = Math.ceil(allNewsItems.length / NEWS_PER_PAGE);
-    const startIdx = currentNewsPage * NEWS_PER_PAGE;
-    const endIdx = startIdx + NEWS_PER_PAGE;
-    const paginatedItems = allNewsItems.slice(startIdx, endIdx);
-    
-    paginatedItems.forEach(item => {
+    newsItems.forEach(item => {
       const card = document.createElement('div');
       card.className = 'news-card';
-      const dateStr = item.formattedDate || formatDate(item.date);
-      const title = item.title || '';
-      const description = item.description || '';
-      const link = item.link || '';
-      const sourceName = item.sourceName || 'Folha do Litoral News';
-      const sourceUrl = item.sourceUrl || link || '';
-      
-      let html = (dateStr ? '<div class="news-date">' + dateStr + '</div>' : '');
-      html += '<h3>' + (link ? '<a href="' + link + '" target="_blank" rel="noopener noreferrer">' + title + '</a>' : title) + '</h3>';
-      if (description) {
-        html += '<p>' + description + '</p>';
-      }
-      if (sourceUrl && sourceName) {
-        html += '<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted);">Fonte: <a href="' + sourceUrl + '" target="_blank" rel="noopener noreferrer" style="color: var(--green-deep); font-weight: 600; text-decoration: none;">' + sourceName + '</a></div>';
-      } else if (sourceName) {
-        html += '<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted);">Fonte: ' + sourceName + '</div>';
-      }
-      
-      card.innerHTML = html;
+      const date = item.date || item.Date || item.data || '';
+      const title = item.title || item.Title || item.titulo || item.Título || '';
+      const summary = item.summary || item.Summary || item.resumo || item.Resumo || '';
+      const url = item.url || item.URL || item.link || item.Link || '';
+      card.innerHTML = '<div class="news-date">' + date + '</div>' +
+        '<h3>' + (url ? '<a href="' + url + '" target="_blank" rel="noopener">' + title + '</a>' : title) + '</h3>' +
+        '<p>' + summary + '</p>';
       container.appendChild(card);
     });
-    
-    renderNewsPagination();
-  }
-
-  function renderNewsPagination() {
-    const container = document.getElementById('news-list');
-    const existingPagination = document.getElementById('news-pagination');
-    if (existingPagination) {
-      existingPagination.remove();
-    }
-    
-    const totalPages = Math.ceil(allNewsItems.length / NEWS_PER_PAGE);
-    
-    if (totalPages <= 1) {
-      return;
-    }
-    
-    const paginationContainer = document.createElement('div');
-    paginationContainer.id = 'news-pagination';
-    paginationContainer.style.cssText = 'margin-top: 1.5rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;';
-    
-    for (let i = 0; i < totalPages; i++) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = 'Notícias ' + (i + 1);
-      const pageIndex = i;
-      
-      if (currentNewsPage === i) {
-        btn.style.cssText = 'padding: 0.5rem 1rem; border-radius: 6px; border: none; background-color: var(--green-deep); color: white; font-size: 0.875rem; cursor: pointer; font-weight: 600;';
-      } else {
-        btn.style.cssText = 'padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--green-deep); color: var(--green-deep); font-size: 0.875rem; cursor: pointer;';
-        btn.onmouseover = function() { this.style.backgroundColor = 'var(--green-pale)'; };
-        btn.onmouseout = function() { this.style.backgroundColor = 'transparent'; };
-      }
-      
-      btn.onclick = (function(idx) {
-        return function(e) {
-          e.preventDefault();
-          currentNewsPage = idx;
-          renderCurrentPage();
-        };
-      })(pageIndex);
-      
-      paginationContainer.appendChild(btn);
-    }
-    
-    container.parentNode.insertBefore(paginationContainer, container.nextSibling);
-  }
-
-  function renderNews(newsItems) {
-    const existingPagination = document.getElementById('news-pagination');
-    if (existingPagination) {
-      existingPagination.remove();
-    }
-    
-    if (!newsItems || newsItems.length === 0) {
-      return;
-    }
-    
-    allNewsItems = newsItems;
-    currentNewsPage = 0;
-    renderCurrentPage();
   }
 
   function loadNewsFromSheet() {
@@ -1648,40 +1494,56 @@
             return {
               date: out.date || out.data || '',
               title: out.title || out.titulo || '',
-              summary: out.summary || out.resumo || '',
-              url: out.url || out.link || window.location.href,
-              sourceName: out.source || out.author || 'Fonte'
+              summary: out.summary || out.resumo || ''
             };
           }));
-          renderNews(filterEnvironmentalNews(normalized));
+          renderNews(normalized);
         })
         .catch(() => {
           fetch('news.json')
             .then(response => { if (!response.ok) throw new Error('Falha'); return response.json(); })
-            .then(data => renderNews(filterEnvironmentalNews(normalizeNewsItems(data))))
+            .then(data => renderNews(normalizeNewsItems(data)))
             .catch(() => {
-              renderNews(filterEnvironmentalNews(defaultNews));
+              renderNews(defaultNews);
+              const container = document.getElementById('news-list');
+              const warning = document.createElement('div');
+              warning.className = 'notice news-warning';
+              warning.innerHTML = 'Exibindo notícias de reserva. Verifique o link CSV do Google Sheets ou o arquivo <strong>news.json</strong>.';
+              container.insertBefore(warning, container.firstChild);
             });
         });
     } else {
       fetch('news.json')
         .then(response => { if (!response.ok) throw new Error('Falha ao carregar notícias.'); return response.json(); })
-        .then(data => { renderNews(filterEnvironmentalNews(normalizeNewsItems(data))); })
+        .then(data => { renderNews(normalizeNewsItems(data)); })
         .catch(() => {
-          renderNews(filterEnvironmentalNews(defaultNews));
+          renderNews(defaultNews);
+          const container = document.getElementById('news-list');
+          const warning = document.createElement('div');
+          warning.className = 'notice news-warning';
+          warning.innerHTML = 'Exibindo notícias de reserva. Para atualizar automaticamente, faça o upload de <strong>news.json</strong> junto com o site em um servidor ou serviço de hospedagem estática.';
+          container.insertBefore(warning, container.firstChild);
         });
     }
   }
 
   function loadNews() {
-    fetchExternalNews()
-      .then(news => {
-        const normalized = normalizeNewsItems(news);
-        renderNews(normalized);
-      })
-      .catch(() => {
-        loadNewsFromSheet();
-      });
+    if (GDELT_API_URL) {
+      fetch(GDELT_API_URL)
+        .then(response => { if (!response.ok) throw new Error('Falha ao carregar GDELT'); return response.json(); })
+        .then(data => {
+          const parsed = parseGdelt(data);
+          if (!parsed.length) throw new Error('Nenhum resultado de notícias');
+          setNewsBanner('Exibindo notícias ao vivo da API GDELT.');
+          renderNews(parsed);
+        })
+        .catch(() => {
+          setNewsBanner('Não foi possível carregar notícias ao vivo da API GDELT. Usando fallback local para exibir notícias.');
+          loadNewsFromSheet();
+        });
+    } else {
+      loadNewsFromSheet();
+    }
   }
 
   loadNews();
