@@ -1,3 +1,4 @@
+<!-- VERSAO SITE-COMPLETO-PRELOADER-SIMPLES-V2-2026-06-12: preloader simples integrado ao site completo -->
 <!-- VERSAO SITE-COMPLETO-GUIA-COMO-RECICLAR-V1: guia educativo integrado com busca e cards por categoria -->
 <!DOCTYPE html>
 <!-- VERSAO SITE-COMPLETO-PAINEL-TRANSPARENCIA-V4-MENU-CORRIGIDO-2026-06-12: menu ativo corrigido por id da secao -->
@@ -1970,9 +1971,126 @@
     }
   }
 
+
+  /* ── PRÉ-LOADER SIMPLES ───────────────────── */
+  body.preloading {
+    overflow: hidden;
+  }
+
+  .qr-preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--green-deep);
+    color: white;
+    transition: opacity 0.28s ease, visibility 0.28s ease;
+  }
+
+  .qr-preloader.preloader-hide {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .simple-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 1rem;
+  }
+
+  .simple-loader-logo {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7rem;
+  }
+
+  .simple-spinner {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.28);
+    border-top-color: var(--green-light);
+    animation: simplePreloaderSpin 0.8s linear infinite;
+  }
+
+  .simple-loader strong {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .simple-loader span {
+    font-size: 0.84rem;
+    color: rgba(255,255,255,0.78);
+  }
+
+  @keyframes simplePreloaderSpin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .simple-spinner { animation: none; }
+  }
+
 </style>
 </head>
-<body>
+<body class="preloading">
+<!-- ════════════════════════════════════════════════
+     PRÉ-LOADER SIMPLES
+════════════════════════════════════════════════ -->
+<div id="qr-preloader" class="qr-preloader" role="status" aria-live="polite" aria-label="Carregando QR Verde Paranaguá">
+  <div class="simple-loader">
+    <div class="simple-loader-logo" aria-hidden="true">♻️</div>
+    <div class="simple-spinner" aria-hidden="true"></div>
+    <strong>QR Verde Paranaguá</strong>
+    <span>Carregando...</span>
+  </div>
+</div>
+
+<script>
+  // Pré-loader simples: aparece ao abrir o site e some quando a página carrega.
+  (function () {
+    const preloader = document.getElementById('qr-preloader');
+    if (!preloader) return;
+
+    let finalizado = false;
+
+    function esconderPreloader() {
+      if (finalizado) return;
+      finalizado = true;
+
+      preloader.classList.add('preloader-hide');
+      document.body.classList.remove('preloading');
+      preloader.setAttribute('aria-hidden', 'true');
+
+      setTimeout(function () {
+        if (preloader && preloader.parentNode) {
+          preloader.parentNode.removeChild(preloader);
+        }
+      }, 320);
+    }
+
+    window.addEventListener('load', function () {
+      setTimeout(esconderPreloader, 250);
+    });
+
+    setTimeout(esconderPreloader, 2500);
+  })();
+</script>
+
+
 
 <header>
   <div class="badge">Projeto de Extensão Universitária</div>
@@ -2857,6 +2975,7 @@
 <footer>
   <strong>QR Verde Paranaguá</strong> — Projeto de Extensão Universitária<br>
   Sustentabilidade Aplicada à Engenharia de Produção<br>
+  Gabriel Borges,  Gustavo Furtado,  Nicollas Kikuti<br>
   <span style="font-size:0.75rem; opacity:0.7">Os dados coletados representam a percepção dos participantes voluntários e não substituem medições ambientais oficiais.</span>
 </footer>
 
