@@ -1,4 +1,5 @@
-<!-- VERSAO SITE-COMPLETO-PRELOADER-SIMPLES-V2-2026-06-12: preloader simples integrado ao site completo -->
+<!-- VERSAO SITE-COMPLETO-RESULTADOS-PLANILHA-V4-RANKING-NOVA-GERACAO-2026-06-12: resultados da planilha com ranking por turma do Colegio Nova Geracao -->
+<!-- VERSAO SITE-COMPLETO-SALVAMENTO-PLANILHA-V2-GET-CORRIGIDO-2026-06-12: envio por GET para Apps Script, mais simples de testar e menos sujeito a CORS -->
 <!-- VERSAO SITE-COMPLETO-GUIA-COMO-RECICLAR-V1: guia educativo integrado com busca e cards por categoria -->
 <!DOCTYPE html>
 <!-- VERSAO SITE-COMPLETO-PAINEL-TRANSPARENCIA-V4-MENU-CORRIGIDO-2026-06-12: menu ativo corrigido por id da secao -->
@@ -901,6 +902,83 @@
   .tag-amarelo { background: #FAEEDA; color: #633806; }
   .tag-laranja { background: #FAECE7; color: #993C1D; }
   .tag-vermelho { background: #FCEBEB; color: #791F1F; }
+
+
+
+  /* ── RANKING COLÉGIO NOVA GERAÇÃO ───────────── */
+  .cng-ranking-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    margin-top: 1rem;
+  }
+  .cng-ranking-card h3 {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0.35rem;
+  }
+  .cng-ranking-sub {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    margin-bottom: 1rem;
+  }
+  .cng-winner {
+    background: var(--green-pale);
+    border: 1px solid rgba(15,110,86,0.18);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    color: var(--green-deep);
+    font-weight: 700;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  .cng-ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+  }
+  .cng-ranking-table th {
+    background: var(--green-pale);
+    color: var(--green-deep);
+    font-weight: 700;
+    padding: 9px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .cng-ranking-table td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-mid);
+    vertical-align: middle;
+  }
+  .cng-ranking-table tr:last-child td { border-bottom: none; }
+  .cng-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg);
+    color: var(--green-deep);
+    font-weight: 800;
+  }
+  .cng-pos.top {
+    background: var(--amber);
+    color: var(--teal-dark);
+  }
+  .cng-empty {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    text-align: center;
+    padding: 1.25rem 0;
+  }
 
   /* ── FOOTER ──────────────────────────────────── */
   footer {
@@ -2047,6 +2125,7 @@
 </style>
 </head>
 <body class="preloading">
+
 <!-- ════════════════════════════════════════════════
      PRÉ-LOADER SIMPLES
 ════════════════════════════════════════════════ -->
@@ -2089,7 +2168,6 @@
     setTimeout(esconderPreloader, 2500);
   })();
 </script>
-
 
 
 <header>
@@ -2843,6 +2921,12 @@
       <div style="color:var(--text-muted); font-size:0.88rem; text-align:center; padding: 1.5rem 0">Aguardando participações no quiz para exibir o gráfico.</div>
     </div>
   </div>
+
+  <div class="cng-ranking-card" aria-label="Ranking do Colégio Nova Geração">
+    <h3>🏆 Ranking do Colégio Nova Geração</h3>
+    <p class="cng-ranking-sub">Separação dos estudantes do Colégio Nova Geração por turma. O ranking considera a soma dos pontos do quiz e usa a média como critério de desempate.</p>
+    <div id="cng-ranking"></div>
+  </div>
 </section>
 
 <!-- ════════════════════════════════════════════════
@@ -2975,7 +3059,7 @@
 <footer>
   <strong>QR Verde Paranaguá</strong> — Projeto de Extensão Universitária<br>
   Sustentabilidade Aplicada à Engenharia de Produção<br>
-  Gabriel Borges,  Gustavo Furtado,  Nicollas Kikuti<br>
+  Gabriel Borges, Gustavo Furtado, Nicollas Kikuti<br>
   <span style="font-size:0.75rem; opacity:0.7">Os dados coletados representam a percepção dos participantes voluntários e não substituem medições ambientais oficiais.</span>
 </footer>
 
@@ -2983,6 +3067,41 @@
 <div id="quiz-toast">⚠️ <span id="quiz-toast-msg">Você está chegando no final!</span></div>
 
 <script>
+
+  // ── INTEGRAÇÃO COM GOOGLE SHEETS VIA APPS SCRIPT ───────────────
+  // URL do Web App criado no Google Apps Script para salvar respostas reais.
+  const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyqGgAsG1DdlT1YSLn4GsO0PMSgSvD1alnZls94v5yPX0LEF7CklaqUbdAnXPc63vDL/exec";
+
+  function enviarParaPlanilha(dados) {
+    if (!APP_SCRIPT_URL || APP_SCRIPT_URL.includes('COLE_AQUI')) {
+      console.warn('URL do Apps Script não configurada. Dados não enviados.', dados);
+      return Promise.resolve();
+    }
+
+    // Envio por GET usando Image Beacon.
+    // É mais simples para Google Apps Script e evita o problema de CORS no navegador.
+    const params = new URLSearchParams();
+    Object.entries(dados || {}).forEach(([chave, valor]) => {
+      if (Array.isArray(valor)) {
+        params.append(chave, valor.join(' | '));
+      } else {
+        params.append(chave, valor == null ? '' : String(valor));
+      }
+    });
+
+    params.append('_cache', Date.now().toString());
+
+    const url = APP_SCRIPT_URL + '?' + params.toString();
+
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(true);
+      img.src = url;
+      console.log('Enviando dados para a planilha:', dados);
+    });
+  }
+
   // ── NAVEGAÇÃO ─────────────────────────────────
   function show(id) {
     // Esconde todas as seções e mostra apenas a escolhida
@@ -3009,6 +3128,11 @@
     });
 
     window.scrollTo(0, 0);
+
+    // Ao abrir a aba Resultados, busca os dados acumulados na planilha.
+    if (id === 'resultados') {
+      carregarResultadosDaPlanilha();
+    }
   }
 
 
@@ -3549,6 +3673,20 @@
     outro:           'Outro'
   };
 
+  const turmaNovaGeracaoPorPerfil = {
+    cng_1ano: '1º ano do Ensino Médio',
+    cng_2ano: '2º ano do Ensino Médio',
+    cng_3ano: '3º ano do Ensino Médio'
+  };
+
+  function obterTurmaNovaGeracao(perfil) {
+    return turmaNovaGeracaoPorPerfil[perfil] || '';
+  }
+
+  function obterEscolaPorPerfil(perfil) {
+    return obterTurmaNovaGeracao(perfil) ? 'Colégio Nova Geração' : '';
+  }
+
   let selectedProfile = null;
   let nivelAtual = null;
   let perguntasAtuais = [];
@@ -3738,6 +3876,20 @@
     // Detalhes no card verde
     const acertos = score;
     const pct = Math.round(score / 10 * 100);
+
+    enviarParaPlanilha({
+      tipo: 'quiz',
+      perfil: selectedProfile,
+      perfil_label: profileLabels[selectedProfile] || selectedProfile,
+      nivel: nivelAtual,
+      nivel_label: nivelInfo[nivelAtual]?.label || '',
+      nota: score,
+      erros: erros,
+      percentual: pct,
+      escola: obterEscolaPorPerfil(selectedProfile),
+      turma: obterTurmaNovaGeracao(selectedProfile)
+    });
+
     document.getElementById('score-detail').innerHTML =
       `📊 <strong>Resumo da sua tentativa:</strong><br>` +
       `✅ Acertos: <strong>${acertos}/10</strong> &nbsp;|&nbsp; ❌ Erros: <strong>${erros}/10</strong> &nbsp;|&nbsp; 🎯 Aproveitamento: <strong>${pct}%</strong><br>` +
@@ -3786,6 +3938,83 @@
     });
   }
 
+  function inferirTurmaNovaGeracao(item) {
+    const perfil = String(item.perfil || '').trim();
+    const turmaSalva = String(item.turma || '').trim();
+    const escola = String(item.escola || '').trim().toLowerCase();
+
+    if (turmaSalva && (escola.includes('nova') || perfil.startsWith('cng_'))) return turmaSalva;
+    return obterTurmaNovaGeracao(perfil);
+  }
+
+  function atualizarRankingNovaGeracao(quizzes) {
+    const container = document.getElementById('cng-ranking');
+    if (!container) return;
+
+    const ranking = {};
+    (quizzes || []).forEach(item => {
+      const turma = inferirTurmaNovaGeracao(item);
+      if (!turma) return;
+
+      const nota = Number(String(item.nota || '').replace(',', '.'));
+      if (!Number.isFinite(nota)) return;
+
+      if (!ranking[turma]) ranking[turma] = { turma, participantes: 0, pontos: 0, notas: [] };
+      ranking[turma].participantes++;
+      ranking[turma].pontos += nota;
+      ranking[turma].notas.push(nota);
+    });
+
+    const linhas = Object.values(ranking)
+      .map(item => {
+        const media = item.notas.length ? item.pontos / item.notas.length : 0;
+        return {
+          turma: item.turma,
+          participantes: item.participantes,
+          pontos: item.pontos,
+          media,
+          aproveitamento: media * 10
+        };
+      })
+      .sort((a, b) => b.pontos - a.pontos || b.media - a.media || b.participantes - a.participantes);
+
+    if (!linhas.length) {
+      container.innerHTML = '<div class="cng-empty">Ainda não há respostas de estudantes do Colégio Nova Geração na planilha.</div>';
+      return;
+    }
+
+    const vencedor = linhas[0];
+    container.innerHTML = `
+      <div class="cng-winner">🥇 Turma em 1º lugar: ${escapeHTML(vencedor.turma)} — ${vencedor.pontos.toFixed(0)} pontos, ${vencedor.participantes} participante(s), média ${vencedor.media.toFixed(1)}/10.</div>
+      <div style="overflow-x:auto">
+        <table class="cng-ranking-table">
+          <thead>
+            <tr>
+              <th>Posição</th>
+              <th>Turma</th>
+              <th>Participantes</th>
+              <th>Pontos totais</th>
+              <th>Média</th>
+              <th>Aproveitamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${linhas.map((item, index) => `
+              <tr>
+                <td><span class="cng-pos ${index === 0 ? 'top' : ''}">${index + 1}</span></td>
+                <td><strong>${escapeHTML(item.turma)}</strong></td>
+                <td>${item.participantes}</td>
+                <td>${item.pontos.toFixed(0)}</td>
+                <td>${item.media.toFixed(1)}/10</td>
+                <td>${item.aproveitamento.toFixed(0)}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   // 10. RESET DO QUIZ
   function resetQuiz() {
     if (perfisSemFeedback.includes(selectedProfile)) {
@@ -3828,6 +4057,26 @@
 
     const nota = ratings['limpeza'] || 3;
     const problemas = [...document.querySelectorAll('#problemas input:checked')].map(c=>c.value);
+    const residente = document.querySelector('input[name="residente"]:checked')?.value || '';
+    const descarteFreq = document.querySelector('input[name="descarte_freq"]:checked')?.value || '';
+    const acumulo = document.querySelector('input[name="acumulo"]:checked')?.value || '';
+    const lixeiras = document.querySelector('input[name="lixeiras"]:checked')?.value || '';
+    const coletaRegular = document.querySelector('input[name="coleta"]:checked')?.value || '';
+    const sugestao = document.getElementById('sugestao')?.value || '';
+
+    enviarParaPlanilha({
+      tipo: 'avaliacao_bairro',
+      residente: residente,
+      bairro: bairro,
+      nota_limpeza: nota,
+      descarte_freq: descarteFreq,
+      acumulo: acumulo,
+      lixeiras: lixeiras,
+      coleta_regular: coletaRegular,
+      problemas: problemas,
+      sugestao: sugestao,
+      autoriza: 'sim'
+    });
 
     if (!bairroData[bairro]) bairroData[bairro] = { count:0, notas:[], problemas:{} };
     bairroData[bairro].count++;
@@ -3858,13 +4107,24 @@
   function updateCharts() {
     // Bairros
     const barBairros = document.getElementById('bar-bairros');
-    barBairros.innerHTML = '';
-    Object.entries(bairroData).forEach(([b, d]) => {
+    if (barBairros) barBairros.innerHTML = '';
+
+    const bairrosOrdenados = Object.entries(bairroData).sort((a, b) => {
+      const mediaA = a[1].notas.reduce((s, v) => s + v, 0) / Math.max(a[1].notas.length, 1);
+      const mediaB = b[1].notas.reduce((s, v) => s + v, 0) / Math.max(b[1].notas.length, 1);
+      return mediaB - mediaA || a[0].localeCompare(b[0], 'pt-BR');
+    });
+
+    if (!bairrosOrdenados.length && barBairros) {
+      barBairros.innerHTML = '<div style="color:var(--text-muted); font-size:0.88rem; text-align:center; padding: 1.5rem 0">Aguardando respostas suficientes para exibir o gráfico.</div>';
+    }
+
+    bairrosOrdenados.forEach(([b, d]) => {
       const media = (d.notas.reduce((a,v)=>a+v,0)/d.notas.length);
       const pct = (media/5*100).toFixed(0);
       const row = document.createElement('div');
       row.className = 'bar-row';
-      row.innerHTML = '<div class="bar-label"><span>'+b+'</span><span>'+media.toFixed(1)+'/5</span></div><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>';
+      row.innerHTML = '<div class="bar-label"><span>'+escapeHTML(b)+'</span><span>'+media.toFixed(1)+'/5</span></div><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>';
       barBairros.appendChild(row);
     });
 
@@ -3873,20 +4133,32 @@
     Object.values(bairroData).forEach(d => Object.entries(d.problemas).forEach(([k,v]) => allProblemas[k]=(allProblemas[k]||0)+v));
     const sorted = Object.entries(allProblemas).sort((a,b)=>b[1]-a[1]);
     const barProb = document.getElementById('bar-problemas');
-    barProb.innerHTML = '';
+    if (barProb) barProb.innerHTML = '';
     const maxV = sorted[0]?.[1]||1;
+
+    if (!sorted.length && barProb) {
+      barProb.innerHTML = '<div style="color:var(--text-muted); font-size:0.88rem; text-align:center; padding: 1.5rem 0">Aguardando respostas suficientes para exibir o gráfico.</div>';
+    }
+
     sorted.forEach(([k,v]) => {
       const pct = (v/maxV*100).toFixed(0);
       const row = document.createElement('div');
       row.className = 'bar-row';
-      row.innerHTML = '<div class="bar-label"><span>'+problemaLabels[k]+'</span><span>'+v+' cit.</span></div><div class="bar-track"><div class="bar-fill amber" style="width:'+pct+'%"></div></div>';
+      row.innerHTML = '<div class="bar-label"><span>'+escapeHTML(problemaLabels[k] || k)+'</span><span>'+v+' cit.</span></div><div class="bar-track"><div class="bar-fill amber" style="width:'+pct+'%"></div></div>';
       barProb.appendChild(row);
     });
 
     // Tabela
     const tbody = document.getElementById('tbody-bairros');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    Object.entries(bairroData).forEach(([b,d]) => {
+
+    if (!bairrosOrdenados.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:1.5rem">Aguardando respostas para preencher a tabela.</td></tr>';
+      return;
+    }
+
+    bairrosOrdenados.forEach(([b,d]) => {
       const media = (d.notas.reduce((a,v)=>a+v,0)/d.notas.length);
       const topP = Object.entries(d.problemas).sort((a,z)=>z[1]-a[1])[0];
       let tag = '';
@@ -3895,10 +4167,155 @@
       else if (media>=2) tag='<span class="tag-status tag-laranja">🟠 Frequente</span>';
       else tag='<span class="tag-status tag-vermelho">🔴 Crítica</span>';
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>'+b+'</td><td>'+d.count+'</td><td>'+media.toFixed(1)+'</td><td>'+(topP?problemaLabels[topP[0]]:'—')+'</td><td>'+tag+'</td>';
+      tr.innerHTML = '<td>'+escapeHTML(b)+'</td><td>'+d.count+'</td><td>'+media.toFixed(1)+'</td><td>'+(topP?escapeHTML(problemaLabels[topP[0]] || topP[0]):'—')+'</td><td>'+tag+'</td>';
       tbody.appendChild(tr);
     });
   }
+
+  // ── CARREGAR RESULTADOS REAIS DA PLANILHA ─────────────────────────────
+  // Usa JSONP porque Apps Script não libera CORS facilmente para fetch comum.
+  let resultadosCarregando = false;
+  let resultadosUltimaAtualizacao = 0;
+
+  function buscarDadosDaPlanilha() {
+    return new Promise((resolve, reject) => {
+      if (!APP_SCRIPT_URL || APP_SCRIPT_URL.includes('COLE_AQUI')) {
+        reject(new Error('URL do Apps Script não configurada.'));
+        return;
+      }
+
+      const callbackName = 'qrVerdeResultados_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+      const script = document.createElement('script');
+      const params = new URLSearchParams({
+        acao: 'listar_resultados',
+        callback: callbackName,
+        _cache: Date.now().toString()
+      });
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('Tempo esgotado ao buscar dados da planilha.'));
+      }, 12000);
+
+      function cleanup() {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[callbackName] = function (dados) {
+        cleanup();
+        resolve(dados);
+      };
+
+      script.onerror = function () {
+        cleanup();
+        reject(new Error('Não foi possível carregar os dados da planilha.'));
+      };
+
+      script.src = APP_SCRIPT_URL + '?' + params.toString();
+      document.body.appendChild(script);
+    });
+  }
+
+  function normalizarListaProblemas(valor) {
+    if (!valor) return [];
+    if (Array.isArray(valor)) return valor;
+    return String(valor)
+      .split(/\s*\|\s*|\s*,\s*/g)
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  function limparObjeto(obj) {
+    Object.keys(obj).forEach(chave => delete obj[chave]);
+  }
+
+  function aplicarResultadosDaPlanilha(payload) {
+    const avaliacoes = Array.isArray(payload?.avaliacoes_bairro) ? payload.avaliacoes_bairro : [];
+    const quizzes = Array.isArray(payload?.quiz_respostas) ? payload.quiz_respostas : [];
+
+    limparObjeto(bairroData);
+    totalRespostas = 0;
+
+    avaliacoes.forEach(item => {
+      const bairro = String(item.bairro || '').trim();
+      const nota = Number(String(item.nota_limpeza || '').replace(',', '.'));
+      if (!bairro || !Number.isFinite(nota) || nota <= 0) return;
+
+      totalRespostas++;
+      if (!bairroData[bairro]) bairroData[bairro] = { count:0, notas:[], problemas:{} };
+      bairroData[bairro].count++;
+      bairroData[bairro].notas.push(nota);
+
+      normalizarListaProblemas(item.problemas).forEach(p => {
+        bairroData[bairro].problemas[p] = (bairroData[bairro].problemas[p] || 0) + 1;
+      });
+    });
+
+    document.getElementById('m-total').textContent = totalRespostas;
+    document.getElementById('m-bairros').textContent = Object.keys(bairroData).length;
+    const allNotas = Object.values(bairroData).flatMap(d => d.notas);
+    document.getElementById('m-nota').textContent = allNotas.length
+      ? (allNotas.reduce((a,b) => a + b, 0) / allNotas.length).toFixed(1)
+      : '—';
+
+    updateCharts();
+
+    limparObjeto(quizPerfilData);
+    quizScore = quizzes.length;
+    document.getElementById('m-quiz').textContent = quizScore;
+
+    quizzes.forEach(item => {
+      const perfil = String(item.perfil || 'sem_perfil').trim() || 'sem_perfil';
+      const nota = Number(String(item.nota || '').replace(',', '.'));
+      if (!Number.isFinite(nota)) return;
+
+      if (!quizPerfilData[perfil]) quizPerfilData[perfil] = { scores: [], count: 0 };
+      quizPerfilData[perfil].scores.push(nota);
+      quizPerfilData[perfil].count++;
+    });
+
+    updateQuizPerfilChart();
+    atualizarRankingNovaGeracao(quizzes);
+    resultadosUltimaAtualizacao = Date.now();
+  }
+
+  async function carregarResultadosDaPlanilha() {
+    if (resultadosCarregando) return;
+    resultadosCarregando = true;
+
+    const avisoResultados = document.querySelector('#resultados .notice');
+    const textoOriginal = avisoResultados ? avisoResultados.innerHTML : '';
+
+    try {
+      if (avisoResultados) {
+        avisoResultados.innerHTML = '<strong>Atualizando:</strong> buscando respostas reais salvas na planilha...';
+      }
+
+      const payload = await buscarDadosDaPlanilha();
+
+      if (!payload || payload.ok === false) {
+        throw new Error(payload?.erro || 'Resposta inválida do Apps Script.');
+      }
+
+      aplicarResultadosDaPlanilha(payload);
+
+      if (avisoResultados) {
+        const agora = new Date().toLocaleString('pt-BR');
+        avisoResultados.innerHTML = '<strong>Dados carregados da planilha:</strong> os gráficos abaixo usam as respostas acumuladas nas abas <strong>avaliacoes_bairro</strong> e <strong>quiz_respostas</strong>. Última atualização: ' + agora + '. <strong>Não representa medição ambiental oficial.</strong>';
+      }
+
+    } catch (erro) {
+      console.warn('Erro ao carregar resultados da planilha:', erro);
+      if (avisoResultados) {
+        avisoResultados.innerHTML = textoOriginal || '<strong>Aviso:</strong> não foi possível carregar os dados da planilha agora.';
+      }
+    } finally {
+      resultadosCarregando = false;
+    }
+  }
+
 
 
 
@@ -4832,6 +5249,7 @@
     preencherFiltrosColeta();
     renderCalendarioColeta();
     renderGuiaReciclagem();
+    carregarResultadosDaPlanilha();
     removerBotoesConfirmarResposta();
     const quizArea = document.getElementById('quiz');
     if (quizArea) {
